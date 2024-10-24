@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::time;
 
 struct TrieNode {
-    children: HashMap<String, TrieNode>,
+    pub children: HashMap<String, TrieNode>,
     pub data: Vec<u8>,
     pub expiry: time::SystemTime,
 }
@@ -67,5 +67,29 @@ impl Cache {
                 .entry(last_segment.to_string())
                 .or_insert_with(|| TrieNode::new(data.clone(), time::SystemTime::now() + expiry));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn test_cache_set_and_get() {
+        let mut cache = Cache::new();
+        let data = vec![1, 2, 3];
+        let expiry_duration = Duration::from_secs(1);
+
+        cache.set("test/test", data.clone(), expiry_duration);
+
+        let result = cache.get("test/test");
+
+        assert_eq!(result, Some(&data));
+
+        std::thread::sleep(expiry_duration);
+
+        let expired_result = cache.get("test/test");
+        assert_eq!(expired_result, None);
     }
 }

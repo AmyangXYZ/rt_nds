@@ -1,13 +1,23 @@
-use std::time;
-
-use rt_nds::Server;
+use rt_nds::{Client, Server};
+use std::thread;
+use std::time::Duration;
 
 fn main() {
-    let mut server = Server::new();
-    let name = String::from("/data/1");
-    let data = vec![0x52, 0x54, 0x4E, 0x44, 0x53];
+    let server_thread = thread::spawn(|| {
+        let mut server = Server::new("127.0.0.1:7777");
+        server.run();
+    });
 
-    server.cache.set(&name, data, time::Duration::from_secs(60));
+    let client_thread = thread::spawn(|| {
+        thread::sleep(Duration::from_millis(200));
 
-    println!("{:?}", server.cache.get("/data/11"));
+        let client = Client::new(1 as u64, "127.0.0.1:7777");
+        client.set("test/test.txt", vec![1, 2, 3, 4, 5]);
+
+        let data = client.get("test/test.txt1");
+        println!("{:?}", data);
+    });
+
+    server_thread.join().unwrap();
+    client_thread.join().unwrap();
 }
