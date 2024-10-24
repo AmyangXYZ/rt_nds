@@ -1,0 +1,9 @@
+[package]
+name = "rt_nds"
+version = "0.1.0"
+edition = "2021"
+description = "Real-time named-data caching service"
+license = "GPL-3.0"
+
+[dependencies]
+
