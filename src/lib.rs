@@ -4,5 +4,4 @@ mod packet;
 mod server;
 mod timeslot;
 
-pub use cache::CacheEntry;
 pub use server::Server;

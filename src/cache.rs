@@ -1,34 +1,18 @@
 use std::collections::HashMap;
-pub struct CacheEntry {
-    pub name: String,
-    pub data: Vec<u8>,
-    pub expiry: u64,
-    pub size: u64,
-    pub checksum: u32,
-}
-
-impl CacheEntry {
-    pub fn new(name: &str, data: Vec<u8>, expiry: u64, size: u64, checksum: u32) -> Self {
-        Self {
-            name: name.to_string(),
-            data,
-            expiry,
-            size,
-            checksum,
-        }
-    }
-}
+use std::time;
 
 struct TrieNode {
     children: HashMap<String, TrieNode>,
-    cache_entry: Option<CacheEntry>,
+    pub data: Vec<u8>,
+    pub expiry: time::SystemTime,
 }
 
 impl TrieNode {
-    pub fn new(cache_entry: Option<CacheEntry>) -> Self {
+    pub fn new(data: Vec<u8>, expiry: time::SystemTime) -> Self {
         Self {
             children: HashMap::new(),
-            cache_entry,
+            data,
+            expiry,
         }
     }
 }
@@ -40,28 +24,48 @@ pub struct Cache {
 impl Cache {
     pub fn new() -> Self {
         Self {
-            trie_root: TrieNode::new(None),
+            trie_root: TrieNode::new(vec![], time::SystemTime::now()),
         }
     }
 
-    pub fn get(&self, name: &str) -> Option<&CacheEntry> {
+    pub fn get(&self, name: &str) -> Option<&Vec<u8>> {
         let name_segments = name.split('/').collect::<Vec<&str>>();
         let mut current_node = &self.trie_root;
-        for segment in name_segments {
-            current_node = current_node.children.get(segment).unwrap();
+
+        for (i, &segment) in name_segments.iter().enumerate() {
+            match current_node.children.get(segment) {
+                Some(node) => current_node = node,
+                None => return None,
+            }
+
+            if i == name_segments.len() - 1 {
+                if current_node.expiry > time::SystemTime::now() {
+                    return Some(&current_node.data);
+                } else {
+                    return None;
+                }
+            }
         }
-        current_node.cache_entry.as_ref()
+
+        None
     }
 
-    pub fn set(&mut self, entry: CacheEntry) {
-        let name_segments = entry.name.split('/').collect::<Vec<&str>>();
+    pub fn set(&mut self, name: &str, data: Vec<u8>, expiry: time::Duration) {
+        let name_segments = name.split('/').collect::<Vec<&str>>();
         let mut current_node = &mut self.trie_root;
-        for segment in name_segments {
+
+        for &segment in &name_segments[..name_segments.len() - 1] {
             current_node = current_node
                 .children
                 .entry(segment.to_string())
-                .or_insert(TrieNode::new(None));
+                .or_insert_with(|| TrieNode::new(vec![], time::SystemTime::now()));
         }
-        current_node.cache_entry = Some(entry);
+
+        if let Some(&last_segment) = name_segments.last() {
+            current_node
+                .children
+                .entry(last_segment.to_string())
+                .or_insert_with(|| TrieNode::new(data.clone(), time::SystemTime::now() + expiry));
+        }
     }
 }
