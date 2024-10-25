@@ -1,4 +1,6 @@
 use rt_nds::{Client, Server};
+use std::fs::File;
+use std::io::Read;
 use std::thread;
 use std::time::Duration;
 
@@ -12,9 +14,14 @@ fn main() {
         thread::sleep(Duration::from_millis(200));
 
         let client = Client::new(1 as u64, "127.0.0.1:7777");
-        client.set("test/test.txt", vec![1, 2, 3, 4, 5]);
+        let mut file = File::open("/dev/urandom").expect("Failed to open /dev/urandom");
+        let mut data = [0u8; 1024]; // Adjust the size as needed
+        file.read_exact(&mut data)
+            .expect("Failed to read random data");
 
-        let data = client.get("test/test.txt1");
+        client.set("test/test.txt", data.to_vec(), 10);
+
+        let data = client.get("test/test.txt");
         println!("{:?}", data);
     });
 

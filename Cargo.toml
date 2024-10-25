@@ -6,4 +6,4 @@ description = "Real-time named-data caching service"
 license = "GPL-3.0"
 
 [dependencies]
-
+crc32fast = "1.4.2"
